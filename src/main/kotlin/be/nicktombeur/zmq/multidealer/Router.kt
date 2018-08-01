@@ -2,6 +2,7 @@ package be.nicktombeur.zmq.multidealer
 
 import org.zeromq.ZContext
 import org.zeromq.ZMQ
+import org.zeromq.ZMQException
 import java.util.*
 
 class Router(private val context: ZContext, private val server: Server) : Thread() {
@@ -11,19 +12,20 @@ class Router(private val context: ZContext, private val server: Server) : Thread
 
         println("${Thread.currentThread().name} is listening")
         while (!Thread.currentThread().isInterrupted) {
-            val workerId = router.recvStr()
-            val peer = router.recvStr()
-            val msg = router.recvStr()
-            println("${Thread.currentThread().name} Received request:\n\tWorker ID: $workerId\n\tPeer: $peer\n\tMessage: $msg")
+            try {
+                val workerId = router.recvStr()
+                val peer = router.recvStr()
+                val msg = router.recvStr()
+                println("${Thread.currentThread().name} Received request:\n\tWorker ID: $workerId\n\tPeer: $peer\n\tMessage: $msg")
 
-            val tokenizer = StringTokenizer(peer, " ")
-            val peerAddress = tokenizer.nextToken()
-            val process = tokenizer.nextToken()
-
-            if ("hello" == process) {
-                server.send(peerAddress, "returnHello", "Greetings back!")
+                server.send(peer, "Greetings back!")
+            } catch (ex: ZMQException) {
+                if (ZMQ.Error.ETERM.code == ex.errorCode) {
+                    break
+                }
             }
-
         }
+
+        router.close()
     }
 }
